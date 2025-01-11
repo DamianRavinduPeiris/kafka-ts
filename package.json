@@ -1,0 +1,28 @@
+{
+  "name": "kafka-ts",
+  "version": "0.0.1",
+  "description": "",
+  "homepage": "https://github.com/DamianRavinduPeiris/kafka-ts#readme",
+  "bugs": {
+    "url": "https://github.com/DamianRavinduPeiris/kafka-ts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DamianRavinduPeiris/kafka-ts.git"
+  },
+  "license": "ISC",
+  "author": "Damian Peiris.",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+  "start": "node dist/index.js",   
+  "dev": "nodemon src/index.ts"   
+},
+  "devDependencies": {
+    "@tsconfig/node23": "^23.0.0",
+    "@types/node": "^22.10.5",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}
