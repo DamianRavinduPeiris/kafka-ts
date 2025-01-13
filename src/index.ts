@@ -1,34 +1,77 @@
-import { Kafka }from 'kafkajs'
+import { Kafka } from "kafkajs";
+import { Server, Socket } from "socket.io";
+import http from "http";
+
+const server = http.createServer();
+const subscribedTopics: Set<string> = new Set();
+const clients: Set<Socket> = new Set();
+
+const io = new Server(server, {
+  cors: { origin: "*" },
+});
 
 const kafka = new Kafka({
-    clientId: 'react-kafka-app',
-    brokers: ['localhost:9092'], 
+  clientId: "react-kafka-app",
+  brokers: ["localhost:9092"],
 });
 
 const producer = kafka.producer();
-const consumer = kafka.consumer({ groupId: 'react-kafka-group' });
+const consumer = kafka.consumer({ groupId: "react-kafka-group" });
 
-async function produceMessage(topic:string, message:string) {
-    await producer.connect();
-    await producer.send({
+(async () => {
+  await producer.connect();
+  console.log("Producer connected...");
+})();
+
+io.on("connection", (socket) => {
+  console.log("Websocket connected!");
+  if (!clients.has(socket)) {
+    clients.add(socket);
+  }
+
+  socket.on("produce", async ({ topic, message }) => {
+    try {
+      await producer.send({
         topic,
         messages: [{ value: message }],
+      });
+      socket.emit("status", "Message produced successfully");
+    } catch (error) {
+      console.error("Error producing message:", error);
+      socket.emit("status", "Error producing message");
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("WebSocket disconnected");
+  });
+});
+
+async function realTimeConsumer(topic: string) {
+  try {
+    if (!subscribedTopics.has(topic)) {
+      console.log(`Subscribing to topic: ${topic}`);
+      await consumer.connect();
+      await consumer.subscribe({ topic, fromBeginning: true });
+      subscribedTopics.add(topic);
+    }
+
+    consumer.run({
+      eachMessage: async ({ message }) => {
+        const value = message.value ? message.value.toString() : "null";
+        console.log(`Consumed message: ${value}`);
+        clients.forEach((client) => {
+          client.emit("realTimeMessage", value);
+        });
+      },
     });
-    await producer.disconnect();
+  } catch (error) {
+    console.error("Error consuming messages:", error);
+  }
 }
 
+realTimeConsumer("alm.entitlements.audit.topic.qa");
 
-async function consumeMessages(topic:string) {
-    await consumer.connect();
-    await consumer.subscribe({ topic, fromBeginning: true });
-
-    await consumer.run({
-        eachMessage: async ({ message }) => {
-            console.log('Received message : ', message.value ? message.value.toString() : '');
-            
-        },
-    });
-}
-consumeMessages('alm.entitlements.audit.topic.qa');
-
-module.exports = { produceMessage, consumeMessages };
+server.listen(5000, () =>
+  console.log("Server running on http://localhost:5000")
+);
