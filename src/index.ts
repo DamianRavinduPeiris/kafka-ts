@@ -1,6 +1,7 @@
 import { Kafka } from "kafkajs";
 import { Server, Socket } from "socket.io";
 import http from "http";
+import {fetchTopics} from "./admin-client/AdminClient";
 
 const server = http.createServer();
 const subscribedTopics: Set<string> = new Set();
@@ -35,7 +36,8 @@ io.on("connection", (socket) => {
         topic,
         messages: [{ value: message }],
       });
-      socket.emit("status", "Message produced successfully");
+      socket.emit("status", "Message produced successfully!");
+
     } catch (error) {
       console.error("Error producing message:", error);
       socket.emit("status", "Error producing message");
@@ -72,6 +74,7 @@ async function realTimeConsumer(topic: string) {
 
 realTimeConsumer("alm.entitlements.audit.topic.qa");
 
+fetchTopics();
 server.listen(5000, () =>
   console.log("Server running on http://localhost:5000")
 );
