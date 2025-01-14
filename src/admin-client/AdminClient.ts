@@ -5,12 +5,14 @@ const kafka = new Kafka({
   brokers: ["localhost:9092"],
 });
 const admin = kafka.admin();
+const topicsList: string[] = [];
 
-const fetchTopics = async () => {
+const fetchTopics = async (): Promise<string[]> => {
   try {
     await admin.connect();
 
     const topics = await admin.listTopics();
+    topicsList.push(...topics);
 
     console.log(`Available Kafka topics :${topics}`);
 
@@ -18,6 +20,7 @@ const fetchTopics = async () => {
   } catch (error) {
     console.error("Error fetching topics:", error);
   }
+  return topicsList;
 };
 
 export { fetchTopics };

@@ -1,7 +1,7 @@
 import { Kafka } from "kafkajs";
 import { Server, Socket } from "socket.io";
 import http from "http";
-import {fetchTopics} from "./admin-client/AdminClient";
+import { fetchTopics } from "./admin-client/AdminClient";
 
 const server = http.createServer();
 const subscribedTopics: Set<string> = new Set();
@@ -24,11 +24,19 @@ const consumer = kafka.consumer({ groupId: "react-kafka-group" });
   console.log("Producer connected...");
 })();
 
-io.on("connection", (socket) => {
+(async () => {
+    await consumer.connect();
+    console.log("Consumer connected...");
+  })();
+
+io.on("connection", async (socket) => {
   console.log("Websocket connected!");
   if (!clients.has(socket)) {
     clients.add(socket);
   }
+
+  let topics = await fetchTopics();
+  socket.emit("topics", topics);
 
   socket.on("produce", async ({ topic, message }) => {
     try {
@@ -37,11 +45,15 @@ io.on("connection", (socket) => {
         messages: [{ value: message }],
       });
       socket.emit("status", "Message produced successfully!");
-
     } catch (error) {
       console.error("Error producing message:", error);
       socket.emit("status", "Error producing message");
     }
+  });
+
+  socket.on("consume", async ({ topic }) => {
+    console.log(`Consuming messages from topic: ${topic}`);
+    realTimeConsumer(topic,socket);
   });
 
   socket.on("disconnect", () => {
@@ -49,11 +61,10 @@ io.on("connection", (socket) => {
   });
 });
 
-async function realTimeConsumer(topic: string) {
+async function realTimeConsumer(topic: string, socket: Socket) {
   try {
     if (!subscribedTopics.has(topic)) {
       console.log(`Subscribing to topic: ${topic}`);
-      await consumer.connect();
       await consumer.subscribe({ topic, fromBeginning: true });
       subscribedTopics.add(topic);
     }
@@ -62,9 +73,8 @@ async function realTimeConsumer(topic: string) {
       eachMessage: async ({ message }) => {
         const value = message.value ? message.value.toString() : "null";
         console.log(`Consumed message: ${value}`);
-        clients.forEach((client) => {
-          client.emit("realTimeMessage", value);
-        });
+        
+        io.emit("message", JSON.stringify(JSON.parse(value), null, 2));
       },
     });
   } catch (error) {
@@ -72,9 +82,6 @@ async function realTimeConsumer(topic: string) {
   }
 }
 
-realTimeConsumer("alm.entitlements.audit.topic.qa");
-
-fetchTopics();
 server.listen(5000, () =>
   console.log("Server running on http://localhost:5000")
 );
