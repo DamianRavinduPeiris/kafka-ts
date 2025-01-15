@@ -4,8 +4,7 @@ import http from "http";
 import { fetchTopics } from "./admin-client/AdminClient";
 
 const server = http.createServer();
-const subscribedTopics: Set<string> = new Set();
-const clients: Set<Socket> = new Set();
+const clients: Map<Socket, string | null> = new Map(); // Map to track client and their subscribed topic
 
 const io = new Server(server, {
   cors: { origin: "*" },
@@ -24,16 +23,29 @@ const consumer = kafka.consumer({ groupId: "react-kafka-group" });
   console.log("Producer connected...");
 })();
 
-(async () => {
+async function initializeConsumer() {
     await consumer.connect();
     console.log("Consumer connected...");
-  })();
+
+    consumer.run({
+        eachMessage: async ({ topic, partition, message }) => {
+            const value = message.value ? message.value.toString() : "null";
+            console.log(`Received message: ${value}`);
+            for (const [socket, subscribedTopic] of clients) {
+                if (subscribedTopic === topic) {
+                    socket.emit("message", value);
+                }
+            }
+        },
+    });
+}
+
+initializeConsumer();
 
 io.on("connection", async (socket) => {
-  console.log("Websocket connected!");
-  if (!clients.has(socket)) {
-    clients.add(socket);
-  }
+  console.log("WebSocket connected!");
+
+  clients.set(socket, null);
 
   let topics = await fetchTopics();
   socket.emit("topics", topics);
@@ -51,36 +63,20 @@ io.on("connection", async (socket) => {
     }
   });
 
-  socket.on("consume", async ({ topic }) => {
-    console.log(`Consuming messages from topic: ${topic}`);
-    realTimeConsumer(topic,socket);
-  });
+socket.on("consume", async ({ topic }) => {
+    console.log(`Client subscribed to topic: ${topic}`);
+    clients.set(socket, topic);
+    await consumer.stop();
+    await consumer.subscribe({ topic, fromBeginning: true });
+    initializeConsumer();
+
+});
 
   socket.on("disconnect", () => {
     console.log("WebSocket disconnected");
+    clients.delete(socket);
   });
 });
-
-async function realTimeConsumer(topic: string, socket: Socket) {
-  try {
-    if (!subscribedTopics.has(topic)) {
-      console.log(`Subscribing to topic: ${topic}`);
-      await consumer.subscribe({ topic, fromBeginning: true });
-      subscribedTopics.add(topic);
-    }
-
-    consumer.run({
-      eachMessage: async ({ message }) => {
-        const value = message.value ? message.value.toString() : "null";
-        console.log(`Consumed message: ${value}`);
-        
-        io.emit("message", JSON.stringify(JSON.parse(value), null, 2));
-      },
-    });
-  } catch (error) {
-    console.error("Error consuming messages:", error);
-  }
-}
 
 server.listen(5000, () =>
   console.log("Server running on http://localhost:5000")
