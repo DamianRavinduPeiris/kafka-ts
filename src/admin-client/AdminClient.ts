@@ -1,8 +1,13 @@
 import { Kafka } from "kafkajs";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const brokers = process.env.KAFKA_BROKERS?.split(",") || [];
 
 const kafka = new Kafka({
   clientId: "react-kafka-app",
-  brokers: ["localhost:9092"],
+  brokers: brokers,
 });
 const admin = kafka.admin();
 const topicsList: string[] = [];

@@ -2,21 +2,27 @@ import { Kafka } from "kafkajs";
 import { Server, Socket } from "socket.io";
 import http from "http";
 import { fetchTopics } from "./admin-client/AdminClient";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const server = http.createServer();
-const clients: Map<Socket, string | null> = new Map(); // Map to track client and their subscribed topic
-
+const clients: Map<Socket, string | null> = new Map(); 
 const io = new Server(server, {
   cors: { origin: "*" },
 });
 
+const brokers = process.env.KAFKA_BROKERS?.split(",") || [];
+
 const kafka = new Kafka({
   clientId: "react-kafka-app",
-  brokers: ["localhost:9092"],
+  brokers: brokers,
+  connectionTimeout: 30000, // Increase connection timeout
+  requestTimeout: 30000, // Increase request timeout
 });
 
 const producer = kafka.producer();
-const consumer = kafka.consumer({ groupId: "react-kafka-group" });
+const consumer = kafka.consumer({ groupId: "react-kafka-group",sessionTimeout: 30000 });
 
 (async () => {
   await producer.connect();
@@ -67,7 +73,7 @@ socket.on("consume", async ({ topic }) => {
     console.log(`Client subscribed to topic: ${topic}`);
     clients.set(socket, topic);
     await consumer.stop();
-    await consumer.subscribe({ topic, fromBeginning: true });
+    await consumer.subscribe({ topic, fromBeginning: false });
     initializeConsumer();
 
 });
