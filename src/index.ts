@@ -15,14 +15,15 @@ const io = new Server(server, {
 const brokers = process.env.KAFKA_BROKERS?.split(",") || [];
 
 const kafka = new Kafka({
-  clientId: "react-kafka-app",
+  clientId: "StreamSight",
   brokers: brokers,
-  connectionTimeout: 30000, // Increase connection timeout
-  requestTimeout: 30000, // Increase request timeout
+  connectionTimeout: 30000,
+  requestTimeout: 30000,
+  logLevel: 1,
 });
 
 const producer = kafka.producer();
-const consumer = kafka.consumer({ groupId: "react-kafka-group",sessionTimeout: 30000 });
+const consumer = kafka.consumer({ groupId: "test-k-consumer",sessionTimeout: 30000 });
 
 (async () => {
   await producer.connect();
@@ -63,6 +64,7 @@ io.on("connection", async (socket) => {
         messages: [{ value: message }],
       });
       socket.emit("status", "Message produced successfully!");
+      console.log(`Produced message: ${message} to topic: ${topic}`);
     } catch (error) {
       console.error("Error producing message:", error);
       socket.emit("status", "Error producing message");
@@ -84,6 +86,6 @@ socket.on("consume", async ({ topic }) => {
   });
 });
 
-server.listen(5000, () =>
-  console.log("Server running on http://localhost:5000")
+server.listen(7000, () =>
+  console.log("Server running on http://localhost:7000")
 );
