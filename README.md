@@ -36,7 +36,7 @@ Ensure the following tools are installed:
    ```bash
    yarn install
 
-4. **Create an .env file in project root and add KAFKA_BROKERS property which contains your cluster endpoint(s).If you have multiple endpoints,seperate them with commas.**
+4. **Create an `.env` file in project root and add `KAFKA_BROKERS` property which contains your cluster endpoint(s).If you have multiple endpoints,seperate them with commas.**
 
 
 5. **Start the application**
