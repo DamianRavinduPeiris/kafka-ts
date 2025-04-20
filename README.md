@@ -89,4 +89,4 @@ If you encounter any issues, please open an issue in the repository with a detai
 
 This project is licensed under the [MIT License](LICENSE).
 
-Made with ❤️ by [Damian](#)
+Made with ❤️ by [Damian](#).
